@@ -5,6 +5,7 @@ use std::process;
 
 use anyhow::anyhow;
 use clap::{crate_version, AppSettings, ArgGroup, Clap};
+use once_cell::sync::OnceCell;
 use url::Url;
 
 use crate::config::{
@@ -13,6 +14,26 @@ use crate::config::{
 use crate::context::{LockMode, Settings};
 use crate::edit::Plugin;
 use crate::log::{Output, Verbosity};
+
+fn long_version() -> &'static str {
+    static REF: OnceCell<String> = OnceCell::new();
+    REF.get_or_init(|| {
+        let mut v = String::from(option_env!("GIT_DESCRIBE").unwrap_or(env!("CARGO_PKG_VERSION")));
+        macro_rules! push {
+            ($($arg:tt)*) => {v.push('\n'); v.push_str(&format!($($arg)+))};
+        }
+        if let (Some(commit_hash), Some(commit_date)) = (
+            option_env!("GIT_COMMIT_HASH"),
+            option_env!("GIT_COMMIT_DATE"),
+        ) {
+            push!("binary: {}", env!("CARGO_PKG_NAME"));
+            push!("release: {}", env!("CARGO_PKG_VERSION"));
+            push!("commit-hash: {}", commit_hash);
+            push!("commit-date: {}", commit_date);
+        }
+        v
+    })
+}
 
 #[derive(Debug, PartialEq, Clap)]
 #[clap(
@@ -127,6 +148,7 @@ enum RawCommand {
     author,
     about,
     version,
+    long_version = long_version(),
     term_width = 120,
     setting = AppSettings::SubcommandRequired,
     global_setting = AppSettings::DeriveDisplayOrder,
