@@ -8,6 +8,7 @@ use std::str::FromStr;
 
 use anyhow::anyhow;
 use clap::{crate_version, AppSettings, ArgGroup, Clap};
+use once_cell::sync::OnceCell;
 use thiserror::Error;
 use url::Url;
 
@@ -141,7 +142,8 @@ enum RawCommand {
 #[clap(
     author,
     about,
-    version,
+    version = version(),
+    long_version = long_version(),
     term_width = 120,
     setting = AppSettings::SubcommandRequired,
     global_setting = AppSettings::DeriveDisplayOrder,
@@ -221,6 +223,52 @@ pub struct Opt {
     pub output: Output,
     /// The subcommand.
     pub command: Command,
+}
+
+fn version() -> &'static str {
+    static REF: OnceCell<String> = OnceCell::new();
+    REF.get_or_init(|| {
+        String::from(option_env!("GIT_DESCRIBE").unwrap_or(env!("CARGO_PKG_VERSION")))
+    })
+}
+
+fn long_version() -> &'static str {
+    static REF: OnceCell<String> = OnceCell::new();
+    REF.get_or_init(|| {
+        let mut v = String::from(version());
+        macro_rules! push {
+            ($($arg:tt)*) => {v.push('\n'); v.push_str(&format!($($arg)+))};
+        }
+        if let (Some(commit_hash), Some(commit_date)) = (
+            option_env!("GIT_COMMIT_HASH"),
+            option_env!("GIT_COMMIT_DATE"),
+        ) {
+            push!("");
+            push!("{}:", env!("CARGO_PKG_NAME").to_uppercase());
+            push!("binary: {}", env!("CARGO_PKG_NAME"));
+            push!("release: {}", env!("CARGO_PKG_VERSION"));
+            push!("commit-hash: {}", commit_hash);
+            push!("commit-date: {}", commit_date);
+            push!("target: {}", env!("TARGET"));
+        }
+
+        if let (Some(binary), Some(release), Some(commit_hash), Some(commit_date), Some(host)) = (
+            option_env!("RUSTC_VERSION_BINARY"),
+            option_env!("RUSTC_VERSION_RELEASE"),
+            option_env!("RUSTC_VERSION_COMMIT_HASH"),
+            option_env!("RUSTC_VERSION_COMMIT_DATE"),
+            option_env!("RUSTC_VERSION_HOST"),
+        ) {
+            push!("");
+            push!("COMPILER:");
+            push!("binary: {}", binary);
+            push!("release: {}", release);
+            push!("commit-hash: {}", commit_hash);
+            push!("commit-date: {}", commit_date);
+            push!("host: {}", host);
+        }
+        v
+    })
 }
 
 impl Default for ColorChoice {
