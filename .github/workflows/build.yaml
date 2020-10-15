@@ -57,6 +57,8 @@ jobs:
         override: true
 
     - name: Test
+      env:
+        RUSTFLAGS: '-C target-feature=-crt-static'
       run: |
         cargo install cross
         cross test --locked --target ${{ matrix.target }}

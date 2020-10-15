@@ -99,6 +99,8 @@ jobs:
           override: true
 
       - name: Build
+        env:
+          RUSTFLAGS: '-C target-feature=-crt-static'
         run: |
           cargo install cross
           cross build --locked --release --target ${{ matrix.target }}
