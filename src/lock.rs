@@ -214,7 +214,8 @@ impl Source {
         url: Url,
         checkout: GitCheckout,
     ) -> Result<LockedSource> {
-        let temp_dir = TempPath::new(&dir);
+        let temp_dir =
+            TempPath::new_force(&dir).context("failed to prepare temporary clone directory")?;
         let repo = git::clone(&url, &temp_dir.path())?;
         git::checkout(&repo, checkout.resolve(&repo)?)?;
         git::submodule_update(&repo).context("failed to recursively update")?;
@@ -297,7 +298,8 @@ impl Source {
         let mut response =
             util::download(url.clone()).with_context(s!("failed to download `{}`", url))?;
         fs::create_dir_all(&dir).with_context(s!("failed to create dir `{}`", dir.display()))?;
-        let mut temp_file = TempPath::new(&file);
+        let mut temp_file =
+            TempPath::new_force(&file).context("failed to prepare temporary download directory")?;
         temp_file.write(&mut response).with_context(s!(
             "failed to copy contents to `{}`",
             temp_file.path().display()

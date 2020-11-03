@@ -66,7 +66,7 @@ impl Editor {
 
     /// Open a file for editing with initial contents.
     pub fn edit(self, path: &Path, contents: &str) -> Result<Child> {
-        let file = TempPath::new(path);
+        let file = TempPath::new(path).unwrap();
         let Self { bin, args } = self;
         fs::write(file.path(), &contents).context("failed to write to temporary file")?;
         let child = Command::new(bin)

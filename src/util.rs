@@ -1,9 +1,10 @@
 //! Utility traits and functions.
 
+use std::ffi;
 use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process;
+use std::result;
 use std::time;
 
 use anyhow::{Context as ResultExt, Error, Result};
@@ -113,17 +114,32 @@ pub struct TempPath {
 }
 
 impl TempPath {
-    /// Create a new `TempPath`.
-    pub fn new(original_path: &Path) -> Self {
+    /// Create a new `TempPath` based on an original path, the temporary
+    /// filename will be placed in the same directory with a deterministic name.
+    ///
+    /// # Errors
+    ///
+    /// If a temporary path already exists.
+    pub fn new(original_path: &Path) -> result::Result<Self, PathBuf> {
         let mut path = original_path.parent().unwrap().to_path_buf();
-        let mut file_name = original_path.file_stem().unwrap().to_os_string();
-        file_name.push(format!("-tmp-{}", process::id()));
-        if let Some(ext) = original_path.extension() {
-            file_name.push(".");
-            file_name.push(ext);
-        }
+        let mut file_name = ffi::OsString::from("~");
+        file_name.push(original_path.file_name().unwrap());
         path.push(file_name);
-        Self { path: Some(path) }
+        if path.exists() {
+            Err(path)
+        } else {
+            Ok(Self { path: Some(path) })
+        }
+    }
+
+    pub fn new_force(original_path: &Path) -> Result<Self> {
+        match Self::new(original_path) {
+            Ok(temp_path) => Ok(temp_path),
+            Err(path) => {
+                nuke_path(&path)?;
+                Ok(Self { path: Some(path) })
+            }
+        }
     }
 
     /// Access the underlying `Path`.
